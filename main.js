@@ -37,14 +37,13 @@ function selectRandom(arr, n) {
   return selected;
 }
 
-function requestHTML(url) {
-  return got(url)
-    .then((result) => {
-      return result.body;
-    })
-    .catch((err) => {
-      return "";
-    });
+async function requestHTML(url) {
+  try {
+    const result = await got(url);
+    return result.body;
+  } catch (err) {
+    return "";
+  }
 }
 
 async function getWikiLinks(length) {
@@ -59,7 +58,7 @@ async function getWikiLinks(length) {
   wikilinks.push({ link: nextLink, others: selected });
   url = "https://en.wikipedia.org/wiki/" + nextLink;
 
-  for (let i = 0; i < 4 - 1; i++) {
+  for (let i = 0; i < length - 1; i++) {
     let html = await requestHTML(url);
     let links = extractLinks(html);
     let selected = selectRandom(links, 10);
@@ -86,7 +85,8 @@ function runServer() {
   console.log("Server started at: http://localhost:" + port);
 }
 
-getWikiLinks().then((wikilinks) => {
+let length = 5
+getWikiLinks(length).then((wikilinks) => {
   console.log(wikilinks);
   runServer();
 });
