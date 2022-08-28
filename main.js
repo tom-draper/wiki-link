@@ -1,5 +1,6 @@
 import express from "express";
 import got from "got";
+import util from 'util'
 
 function randInt(max) {
   return Math.floor(Math.random() * max);
@@ -39,7 +40,8 @@ function selectRandom(arr, n) {
 }
 
 async function requestHTML(url) {
-  console.log('Fetching', url)
+  counter += 1
+  // console.log('Fetching', url)
   try {
     const result = await got(url);
     return result.body;
@@ -57,14 +59,14 @@ function selectLinkPath(links) {
 }
 
 
-async function recurseCollectLinks(url, wikilinks, path, onPath, depth) {
+async function recurseCollectLinks(url, wikilinks, path, onPath, depth, width) {
   if (depth < 1) {
     return
   }
 
   let html = await requestHTML(url);
   let links = extractLinks(html);
-  let selected = selectRandom(links, 2);
+  let selected = selectRandom(links, width);
   let nextLink = selectLinkPath(selected);
   
   if (onPath) {
@@ -73,22 +75,22 @@ async function recurseCollectLinks(url, wikilinks, path, onPath, depth) {
   
   wikilinks[nextLink] = {};
   url = "https://en.wikipedia.org/wiki/" + nextLink;
-  await recurseCollectLinks(url, wikilinks[nextLink], path, true, depth-1)
+  await recurseCollectLinks(url, wikilinks[nextLink], path, onPath, depth-1, width)
   
   for (let link of selected) {
     wikilinks[link] = {};
     url = "https://en.wikipedia.org/wiki/" + link;
-    await recurseCollectLinks(url, wikilinks[link], path, false, depth-1);
+    await recurseCollectLinks(url, wikilinks[link], path, false, depth-1, width);
   }
 }
 
 
-async function getWikiLinks(depth) {
+async function getWikiLinks(depth, width) {
   let url = "https://en.wikipedia.org/wiki/Main_Page"; // input your url here
   
   let html = await requestHTML(url);
   let links = extractLinks(html);
-  let selected = selectRandom(links, 2);
+  let selected = selectRandom(links, width);
   let startLink = selectLinkPath(selected);
   
   let wikilinks = {};
@@ -96,7 +98,7 @@ async function getWikiLinks(depth) {
   let path = [startLink];
 
   url = "https://en.wikipedia.org/wiki/" + startLink;
-  await recurseCollectLinks(url, wikilinks[startLink], path, true, depth);
+  await recurseCollectLinks(url, wikilinks[startLink], path, true, depth, width);
 
   return [wikilinks, path];
 }
@@ -115,7 +117,16 @@ function runServer() {
   console.log("Server started at: http://localhost:" + port);
 }
 
-let depth = 2
-let [wikilinks, path] = await getWikiLinks(depth);
-console.log('finished')
-console.log(wikilinks, path)
+let counter = 0;
+let depth = 2  // Length of link path
+let width = 2  // Number of links from each page
+let nPages = 1 + (Math.pow(width, depth)-1) / (width-1)
+if (nPages < 100) {
+  console.log(nPages)
+  let [wikilinks, path] = await getWikiLinks(depth, width);
+  console.log(wikilinks, path);
+  console.log(util.inspect(wikilinks, false, null, true /* enable colors */))
+  
+  console.log(counter);
+  // runServer();
+}
